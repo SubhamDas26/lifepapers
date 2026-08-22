@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Papers — Global Open Access Archive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Libraries for generating Notes into PDF and Images -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* =========================
+           LIFE PAPERS MAIN CSS
+        ========================= */
+        :root {
+            --bg: #e0f7fa;
+            --surface: #ffffff;
+            --border: #bce3eb;
+            --text-main: #171717;
+            --text-muted: #5a7b82;
+            --accent: #00796b;
+            --badge-bg: #e0f2f1;
+            --radius: 12px;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: linear-gradient(135deg, #eef7ff, #e0f7fa);
+            color: var(--text-main);
+            font-family: var(--font);
+            line-height: 1.6;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* --- Floating Leaves --- */
+        .leaves-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+        .leaf { position: absolute; top: -50px; width: 24px; height: 24px; opacity: 0.6; animation: float 10s linear infinite; }
+        .leaf svg { width: 100%; height: 100%; }
+        .leaf-light { fill: #81c784; }
+        .leaf-dark { fill: #388e3c; }
+
+        @keyframes float {
+            0% { transform: translateY(-50px) rotate(0deg) translateX(0px); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(100vh) rotate(360deg) translateX(100px); opacity: 0; }
+        }
+
+        .l1 { left: 10%; animation-duration: 12s; animation-delay: 0s; }
+        .l2 { left: 25%; animation-duration: 15s; animation-delay: -5s; }
+        .l3 { left: 40%; animation-duration: 10s; animation-delay: -2s; }
+        .l4 { left: 60%; animation-duration: 14s; animation-delay: -7s; }
+        .l5 { left: 75%; animation-duration: 11s; animation-delay: -3s; }
+        .l6 { left: 90%; animation-duration: 16s; animation-delay: -1s; }
+
+        /* --- Main Layout --- */
+        .container { width: 100%; max-width: 860px; z-index: 1; margin-bottom: 120px; }
+        header { margin-bottom: 28px; text-align: center; position: relative; }
+        header h1 { font-size: 2.2rem; font-weight: 600; color: #004d40; letter-spacing: -0.03em; }
+        header p { color: var(--text-muted); font-size: 1rem; margin-top: 4px; }
+
+        .top-buttons { position: absolute; top: 0; right: 0; display: flex; gap: 10px; }
+        .btn-top {
+            background: var(--surface); border: 2px solid var(--accent); color: var(--accent);
+            padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-top:hover { background: var(--accent); color: #fff; }
+
+        /* --- Controls & Search --- */
+        .controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; background: rgba(255, 255, 255, 0.7); padding: 20px; border-radius: var(--radius); backdrop-filter: blur(10px); border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); position: relative; z-index: 100; }
+        .search-row { display: flex; gap: 8px; }
+        input[type="text"], input[type="number"], select { font-family: var(--font); font-size: 0.92rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 14px; color: var(--text-main); outline: none; transition: all 0.2s; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1); }
+        .search-input { flex: 1; }
+        .btn { background: var(--accent); color: #ffffff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 0.92rem; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+        .btn:hover { background: #004d40; }
+        .btn-danger { background: #e53935; }
+        .btn-danger:hover { background: #c62828; }
+        .filters-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .filters-row select { flex: 1; min-width: 150px; }
+        
+        /* Custom Topic Dropdown */
+        .custom-dropdown { position: relative; flex: 1; min-width: 220px; }
+        .dropdown-header { font-family: var(--font); font-size: 0.92rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 14px; cursor: pointer; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; height: 100%;}
+        .dropdown-body { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 1000; display: none; margin-top: 5px; padding: 10px; max-height: 320px; flex-direction: column; }
+        .dropdown-body.show { display: flex; }
+        #topicSearchInput { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; outline: none; }
+        #topicList { list-style: none; overflow-y: auto; flex: 1; margin: 0; padding: 0; }
+        #topicList li { padding: 8px 12px; cursor: pointer; font-size: 0.9rem; border-radius: 6px; color: var(--text-main); }
+        #topicList li:hover { background: var(--badge-bg); color: var(--accent); font-weight: 500;}
+
+        .stats-bar { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+        /* --- Paper Cards & Infinite Load --- */
+        .paper-list { display: flex; flex-direction: column; gap: 16px; padding-bottom: 20px; position: relative; z-index: 1;}
+        .paper-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.03); position: relative;}
+        .paper-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); border-color: #99d5cf; }
+        .paper-meta { display: flex; gap: 8px; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; flex-wrap: wrap; align-items: center; }
+        .badge { background: var(--badge-bg); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+        .paper-title { font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin-bottom: 8px; color: #004d40; padding-right: 40px;}
+        .pdf-icon { font-size: 1.2rem; vertical-align: middle; margin-left: 6px; cursor: help; }
+        .paper-authors { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; }
+        .paper-abstract { font-size: 0.9rem; color: #404040; line-height: 1.55; margin-bottom: 16px; }
+        .paper-actions { display: flex; gap: 12px; align-items: center; }
+        .btn-view { display: inline-block; text-decoration: none; text-align: center; background: #f0fdfa; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .btn-view:hover { background: var(--accent); color: white; }
+        .action-link { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; }
+        .action-link:hover { color: var(--accent); text-decoration: underline; }
+        
+        .bookmark-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #ccc; transition: 0.2s; }
+        .bookmark-btn:hover { color: #fbc02d; transform: scale(1.1); }
+        .bookmark-btn.saved { color: #fbc02d; }
+        .quality-dot { position: absolute; bottom: 15px; right: 15px; font-size: 1.4rem; cursor: help; transition: transform 0.2s; line-height: 1;}
+        .quality-dot:hover { transform: scale(1.2); }
+
+        .load-more-container { text-align: center; margin-top: 10px; display: none; }
+        #loadMoreBtn { background: var(--surface); color: var(--accent); border: 2px solid var(--accent); width: 100%; padding: 12px; font-size: 1rem; border-radius: var(--radius); cursor: pointer; transition: 0.2s; font-weight: 600; }
+        #loadMoreBtn:hover { background: var(--accent); color: white; }
+
+        /* --- Sidebar (Bookmarks & History) --- */
+        #sidePanel { position: fixed; top: 0; right: -380px; width: 350px; height: 100vh; background: #fff; z-index: 25000; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -4px 0 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        #sidePanel.open { right: 0; }
+        .sp-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
+        .sp-tabs { display: flex; gap: 10px; }
+        .sp-tab { background: none; border: none; font-size: 1.1rem; font-weight: 600; color: var(--text-muted); cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; }
+        .sp-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .sp-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+        .sp-search { padding: 15px; border-bottom: 1px solid var(--border); }
+        .sp-search input { width: 100%; }
+        .sp-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
+        .sp-content.active { display: block; }
+        
+        .bm-category { margin-bottom: 20px; }
+        .bm-category h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px; }
+        .sp-item { background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start;}
+        .sp-item a { color: var(--text-main); text-decoration: none; font-weight: 500; display: block; margin-bottom: 5px; word-break: break-word;}
+        .sp-item a:hover { color: var(--accent); text-decoration: underline; }
+        .sp-item button { background: none; border: none; color: #ef5350; cursor: pointer; font-size: 1rem; }
+        .history-date { font-size: 0.75rem; color: #888; display: block; margin-top: 4px; }
+
+        /* --- Take Your Notes Tool --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 50000; padding: 20px; }
+        .notes-box { background: #fff; width: 100%; max-width: 700px; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .notes-header { padding: 15px 20px; background: #ffca28; color: #333; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 1.2rem; }
+        .notes-close { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #333; }
+        .notes-toolbar { padding: 10px 20px; background: #fff8e1; border-bottom: 1px solid #ffe082; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .notes-body { padding: 20px; background: #fffdf7; position: relative; }
+        .notes-textarea { width: 100%; height: 350px; font-family: 'Courier New', Courier, monospace; font-size: 1.05rem; padding: 15px; border: 1px solid #ffe082; border-radius: 8px; background: #fff; resize: none; outline: none; line-height: 1.6; }
+        .notes-textarea:focus { border-color: #ffca28; box-shadow: 0 0 0 3px rgba(255,202,40,0.2); }
+        .word-counter { position: absolute; bottom: 30px; right: 35px; font-size: 0.85rem; color: #888; font-weight: 600; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 4px;}
+        .word-counter.limit { color: #d32f2f; }
+        .notes-footer { padding: 15px 20px; border-top: 1px solid #ffe082; background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
+        .page-controls { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #555; }
+        .btn-page { background: #e0e0e0; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-page:hover { background: #d5d5d5; }
+        
+        .download-panel { display: none; position: absolute; bottom: 65px; left: 20px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 100; flex-direction: column; gap: 10px; width: 300px; }
+        .download-panel h4 { font-size: 0.95rem; margin-bottom: 5px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        .dl-row { display: flex; gap: 10px; align-items: center; }
+        .dl-row select, .dl-row input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+
+        /* Hidden Render Div for PDF/Image Export */
+        #exportCanvas { position: absolute; left: -9999px; top: -9999px; background: white; padding: 40px; width: 800px; font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.6; color: #000; }
+
+        /* Welcome Guide Popup */
+        .welcome-content { background: #fff; width: 100%; max-width: 550px; border-radius: var(--radius); padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .welcome-content h2 { color: var(--accent); margin-bottom: 15px; font-size: 1.8rem; text-align: center; }
+        .welcome-content > p { color: #444; font-size: 1rem; margin-bottom: 25px; text-align: center; }
+        .feature-block { margin-bottom: 20px; background: #f9f9f9; padding: 15px 20px; border-radius: 8px; border: 1px solid #eee; display: flex; gap: 15px; align-items: flex-start; }
+        .feature-icon { font-size: 2rem; line-height: 1; }
+        .feature-text h3 { font-size: 1.1rem; color: #111; margin-bottom: 6px; }
+        .feature-text p, .feature-text ul { font-size: 0.9rem; color: #444; margin: 0; }
+        .feature-text ul { list-style: none; padding: 0; }
+        .feature-text ul li { margin-bottom: 4px; }
+
+        .news-modal { background: #fff; width: 100%; max-width: 600px; max-height: 85vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); display: flex; flex-direction: column; position: relative; animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes slideUp { 0% { transform: translateY(50px) scale(0.95); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+        .news-header { padding: 15px 20px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 8px 8px 0 0; }
+        .news-header h2 { font-size: 1.2rem; color: #004d40; margin: 0; }
+        .news-close-btn { background: #ef5350; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .news-feed { padding: 20px; overflow-y: auto; flex: 1; }
+        .news-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .news-item:last-child { border-bottom: none; }
+        .news-item h3 { font-size: 1.05rem; color: #004d40; margin-bottom: 4px; line-height: 1.3;}
+        .news-item a { color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+
+        /* --- Agents --- */
+        .agent-speech { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: 200px; padding: 10px 14px; background: rgba(255,255,255,.95); border-radius: 14px; box-shadow: 0 5px 15px rgba(0,0,0,.15); font-size: 0.85rem; font-weight: 500; color: #222; text-align: center; opacity: 0; transition: 0.3s; pointer-events: none; margin-bottom: 15px; border: 2px solid var(--accent); }
+        .agent-speech.show { opacity: 1; transform: translateX(-50%) translateY(-5px); }
+        .agent-speech::after { content: ""; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid var(--accent); }
+
+        #catAgent { position: fixed; bottom: 5px; left: 0; display: flex; flex-direction: column; align-items: center; z-index: 9000; pointer-events: none; }
+        #catFlipper { transition: transform 0.2s; pointer-events: none; }
+        #catAvatar { cursor: pointer; pointer-events: auto; background: transparent; border: none; outline: none; width: 140px; height: 140px; filter: drop-shadow(0 10px 15px rgba(0,0,0,.15)); }
+        #catAvatar svg { width: 100%; height: 100%; overflow: visible; }
+        #catAvatar #body, #catAvatar #head, #catAvatar #tail, #catAvatar #leg-fl, #catAvatar #leg-fr, #catAvatar #leg-bl, #catAvatar #leg-br { transition: transform 0.4s ease-in-out; }
+        #catAvatar #leg-fl, #catAvatar #leg-fr { transform-origin: 55px 65px; }
+        #catAvatar #leg-bl, #catAvatar #leg-br { transform-origin: 30px 60px; }
+        #catAvatar #head { transform-origin: 75px 38px; }
+        #catAvatar #tail { transform-origin: 20px 55px; }
+        .c-walking #leg-fl, .c-walking #leg-br { animation: swing 0.3s infinite alternate ease-in-out; }
+        .c-walking #leg-fr, .c-walking #leg-bl { animation: swing-reverse 0.3s infinite alternate ease-in-out; }
+        .c-walking #body, .c-walking #head { animation: bob 0.2s infinite alternate ease-in-out; }
+        .c-walking #tail { animation: tail-sway 0.4s infinite alternate; }
+        .c-sitting #body { transform: translateY(10px); }
+        .c-sitting #head { transform: translateY(5px); }
+        .c-sitting #leg-fl, .c-sitting #leg-fr { transform: rotate(0deg); }
+        .c-sitting #leg-bl, .c-sitting #leg-br { transform: translate(-5px, -5px) rotate(80deg); } 
+        .c-sitting #tail { transform: rotate(45deg); }
+
+        #monkeyAgent { position: fixed; bottom: 5px; left: 0; display: flex; flex-direction: column; align-items: center; z-index: 8999; pointer-events: none; }
+        #monkeyFlipper { transition: transform 0.2s; pointer-events: none; }
+        #monkeyAvatar { cursor: pointer; pointer-events: auto; background: transparent; border: none; outline: none; width: 150px; height: 150px; filter: drop-shadow(0 10px 15px rgba(0,0,0,.15)); }
+        #monkeyAvatar svg { width: 100%; height: 100%; overflow: visible; }
+        #monkeyAvatar #m-body, #monkeyAvatar #m-head, #monkeyAvatar #m-tail, #monkeyAvatar #m-arm-l, #monkeyAvatar #m-arm-r, #monkeyAvatar #m-leg-l, #monkeyAvatar #m-leg-r { transition: transform 0.3s ease-in-out; }
+        #monkeyAvatar #m-arm-l, #monkeyAvatar #m-arm-r { transform-origin: 50px 45px; }
+        #monkeyAvatar #m-leg-l, #monkeyAvatar #m-leg-r { transform-origin: 50px 75px; }
+        #monkeyAvatar #m-tail { transform-origin: 20px 70px; }
+        .m-walking #m-arm-l, .m-walking #m-leg-r { animation: swing 0.35s infinite alternate ease-in-out; }
+        .m-walking #m-arm-r, .m-walking #m-leg-l { animation: swing-reverse 0.35s infinite alternate ease-in-out; }
+        .m-walking #m-body, .m-walking #m-head { animation: bob 0.35s infinite alternate ease-in-out; }
+        .m-walking #m-tail { animation: tail-swirl 1s infinite alternate ease-in-out; }
+        .m-standing #m-arm-l { transform: rotate(-20deg); }
+        .m-standing #m-arm-r { transform: rotate(20deg); }
+
+        @keyframes swing { from { transform: rotate(-30deg); } to { transform: rotate(30deg); } }
+        @keyframes swing-reverse { from { transform: rotate(30deg); } to { transform: rotate(-30deg); } }
+        @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+        @keyframes tail-sway { from { transform: rotate(-5deg); } to { transform: rotate(15deg); } }
+        @keyframes tail-swirl { from { transform: rotate(0deg); } to { transform: rotate(20deg); } }
+
+        #chatBox { position: fixed; right: 25px; bottom: 25px; width: 320px; max-width: calc(100vw - 30px); background: rgba(255,255,255,.96); border-radius: 22px; box-shadow: 0 15px 50px rgba(0,0,0,.2); overflow: hidden; opacity: 0; transform: translateY(30px) scale(.95); pointer-events: none; transition: .3s ease; z-index: 10000; }
+        #chatBox.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        #chatHeader { padding: 15px; background: linear-gradient(135deg, #00796b, #004d40); color: white; font-weight: bold; }
+        #messages { height: 280px; padding: 15px; overflow-y: auto; font-size: 14px; }
+        .message { margin-bottom: 10px; padding: 9px 12px; border-radius: 13px; max-width: 90%; line-height: 1.4; }
+        .bot { background: #f0f2f5; }
+        .user { background: #00796b; color: white; margin-left: auto; }
+        #inputArea { display: flex; border-top: 1px solid #ddd; }
+        #userInput { flex: 1; border: 0; outline: 0; padding: 13px; font-size: 14px; }
+        #sendBtn { border: 0; background: #00796b; color: white; padding: 0 17px; cursor: pointer; }
+
+        @media(max-width:600px) {
+            #catAvatar { width: 100px; height: 100px; }
+            #monkeyAvatar { width: 110px; height: 110px; }
+            .top-buttons { position: relative; justify-content: center; margin-top: 15px; }
+            .filters-row { flex-direction: column; }
+            .custom-dropdown { width: 100%; }
+            .notes-toolbar { flex-direction: column; align-items: stretch; }
+            .download-panel { width: calc(100vw - 40px); left: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Floating Leaves Background -->
+<div class="leaves-container">
+    <div class="leaf l1"><svg viewBox="0 0 24 24"><path class="leaf-light" d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/></svg></div>
+    <div class="leaf l2"><svg viewBox="0 0 24 24"><path class="leaf-dark" d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/></svg></div>
+</div>
+
+<!-- Welcome Guide Popup (Always shows on load to ensure visibility) -->
+<div id="welcomeOverlay" class="modal-overlay" style="z-index: 50000;">
+    <div class="welcome-content">
+        <h2>Welcome to Life Papers! 🌿</h2>
+        <p>Before you dive into the research, here is a quick guide:</p>
+        
+        <div class="feature-block">
+            <div class="feature-icon">🔵</div>
+            <div class="feature-text">
+                <h3>Paper Quality Dots</h3>
+                <p>Located at the bottom right of every paper card:</p>
+                <ul>
+                    <li><span style="color:#4CAF50; font-size:1.2rem;">●</span> <b>Green:</b> High Quality (> 50 Citations)</li>
+                    <li><span style="color:#2196F3; font-size:1.2rem;">●</span> <b>Blue:</b> Average Quality (> 5 Citations)</li>
+                    <li><span style="color:#F44336; font-size:1.2rem;">●</span> <b>Red:</b> New Paper / Low Citations</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="feature-block">
+            <div class="feature-icon">🐱</div>
+            <div class="feature-text">
+                <h3>AI Helper Cat</h3>
+                <p>Wanders the left side of your screen. Click it to open the chat window, type your idea, and it will find the best paper for you.</p>
+            </div>
+        </div>
+
+        <div class="feature-block">
+            <div class="feature-icon">🐒</div>
+            <div class="feature-text">
+                <h3>News Finder Monkey</h3>
+                <p>Wanders the right side of your screen. Click the monkey to get a slide-up list of the absolute latest biology news and releases.</p>
+            </div>
+        </div>
+
+        <button id="closeWelcomeBtn" class="btn" style="width: 100%; margin-top: 10px; font-size: 1.05rem;">Got it, let's explore!</button>
+    </div>
+</div>
+
+<!-- Side Panel (Bookmarks & History) -->
+<div id="sidePanel">
+    <div class="sp-header">
+        <div class="sp-tabs">
+            <button class="sp-tab active" id="tabBookmarks">Bookmarks</button>
+            <button class="sp-tab" id="tabHistory">History</button>
+        </div>
+        <button class="sp-close" id="closeSidePanelBtn">&times;</button>
+    </div>
+    
+    <!-- Bookmarks View -->
+    <div id="viewBookmarks" class="sp-content active">
+        <input type="text" id="bmSearchInput" placeholder="Search bookmarks..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; margin-bottom:15px;">
+        <div id="bookmarksList"></div>
+    </div>
+
+    <!-- History View -->
+    <div id="viewHistory" class="sp-content">
+        <button id="clearHistoryBtn" class="btn btn-danger" style="width:100%; margin-bottom:15px;">🗑️ Clear History</button>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<!-- Notes Modal -->
+<div id="notesModal" class="modal-overlay">
+    <div class="notes-box">
+        <div class="notes-header">
+            <span>📝 Take Your Notes</span>
+            <button class="notes-close" id="closeNotesBtn">&times;</button>
+        </div>
+        <div class="notes-toolbar">
+            <button class="btn" id="btnNotesClearPage" style="background:#e53935;">Clear This Page</button>
+            <button class="btn" id="btnNotesClearAll" style="background:#d32f2f;">Clear All Pages</button>
+        </div>
+        <div class="notes-body">
+            <textarea id="noteTextarea" class="notes-textarea" placeholder="Start typing your research notes here... (Max 200 words per page)"></textarea>
+            <span class="word-counter" id="wordCounter">0 / 200 words</span>
+        </div>
+        <div class="notes-footer">
+            <div class="page-controls">
+                <button class="btn-page" id="btnNotesPrev">&lt;</button>
+                <span id="notesPageIndicator">Page 1 of 1</span>
+                <button class="btn-page" id="btnNotesNext">&gt;</button>
+                <button class="btn-page" id="btnNotesNew" style="background:#ffca28; color:#333;">+ New</button>
+            </div>
+            <button class="btn" id="btnNotesDownloadMenu" style="background:#1976d2;">Download ⬇</button>
+        </div>
+        
+        <!-- Download Options Panel -->
+        <div class="download-panel" id="downloadPanel">
+            <h4>Export Options</h4>
+            <div class="dl-row">
+                <label>Format:</label>
+                <select id="dlFormat">
+                    <option value="pdf">PDF Document</option>
+                    <option value="jpg">JPG Image</option>
+                    <option value="jpeg">JPEG Image</option>
+                </select>
+            </div>
+            <div class="dl-row">
+                <label>Pages:</label>
+                <select id="dlRange">
+                    <option value="current">This Page Only</option>
+                    <option value="all">All Pages</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            <div class="dl-row" id="dlCustomInputs" style="display:none;">
+                <span>From:</span><input type="number" id="dlFrom" min="1" value="1" style="width:60px;">
+                <span>To:</span><input type="number" id="dlTo" min="1" value="1" style="width:60px;">
+            </div>
+            <button class="btn" id="btnNotesExport" style="margin-top:10px; background:#4CAF50;">Confirm & Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Invisible Div for generating PDFs/Images -->
+<div id="exportCanvas"></div>
+
+<div class="container">
+    <header>
+        <h1>Life Papers</h1>
+        <p>Global open-access archive spanning across the entire internet.</p>
+        <div class="top-buttons">
+            <button class="btn-top" id="openNotesBtn" style="border-color:#ffb300; color:#f57f17;">📝 Notes</button>
+            <button class="btn-top" id="openSidePanelBtn">★ Bookmarks & History</button>
+        </div>
+    </header>
+
+    <section class="controls">
+        <div class="search-row">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by keywords, date, year, topic..." />
+            <button class="btn" id="searchBtn">Search</button>
+        </div>
+
+        <div class="filters-row">
+            <div class="custom-dropdown" id="topicDropdownContainer">
+                <div class="dropdown-header" id="topicHeader">
+                    <span id="topicSelectedText">All Topics</span><span>▼</span>
+                </div>
+                <div class="dropdown-body" id="topicBody">
+                    <input type="text" id="topicSearchInput" placeholder="Search topic name...">
+                    <ul id="topicList"></ul>
+                </div>
+                <input type="hidden" id="activeTopicValue" value="ALL">
+            </div>
+
+            <div style="display:flex; gap: 8px; flex: 1; min-width: 160px;">
+                <select id="yearFilter" style="flex: 1;">
+                    <option value="ALL">Any Year</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2020-2026">2020 – 2026</option>
+                    <option value="CUSTOM">Choose Year...</option>
+                </select>
+                <input type="number" id="customYearInput" placeholder="YYYY" style="display:none; width: 80px;" />
+            </div>
+
+            <select id="sortFilter" style="flex: 1; min-width: 180px;">
+                <option value="cited_by_count:desc">Best Match / Most Cited</option>
+                <option value="publication_date:desc">Date (Newest First)</option>
+                <option value="publication_date:asc">Date (Oldest First)</option>
+            </select>
+        </div>
+    </section>
+
+    <div class="stats-bar">
+        <span id="resultsCount">Loading papers...</span>
+        <span>Open Access Only</span>
+    </div>
+
+    <main class="paper-list" id="paperList"></main>
+    
+    <div class="load-more-container" id="loadMoreContainer">
+        <button id="loadMoreBtn">Load More Papers ↓</button>
+    </div>
+</div>
+
+<!-- =========================
+     AGENTS & MODALS
+========================= -->
+<div id="catAgent">
+    <div class="agent-speech" id="catSpeech">Hi, I am your AI helper Cat</div>
+    <div id="catFlipper">
+        <button id="catAvatar">
+            <svg viewBox="0 0 100 100">
+                <path id="tail" d="M 20 55 Q 5 55 10 30" fill="none" stroke="#f57c00" stroke-width="6" stroke-linecap="round"/>
+                <line id="leg-bl" x1="30" y1="60" x2="30" y2="85" stroke="#e65100" stroke-width="6" stroke-linecap="round" />
+                <line id="leg-br" x1="55" y1="60" x2="55" y2="85" stroke="#e65100" stroke-width="6" stroke-linecap="round" />
+                <rect id="body" x="20" y="45" width="55" height="28" rx="14" fill="#ff9800" />
+                <line id="leg-fl" x1="45" y1="65" x2="45" y2="85" stroke="#ff9800" stroke-width="6" stroke-linecap="round" />
+                <line id="leg-fr" x1="68" y1="65" x2="68" y2="85" stroke="#ff9800" stroke-width="6" stroke-linecap="round" />
+                <g id="head">
+                    <polygon points="63,30 58,12 73,22" fill="#f57c00" />
+                    <polygon points="87,30 92,12 77,22" fill="#f57c00" />
+                    <circle cx="75" cy="38" r="18" fill="#ff9800" />
+                    <g id="eyes-open"><circle cx="69" cy="36" r="3.5" fill="#fff" /><circle cx="81" cy="36" r="3.5" fill="#fff" /><circle class="pupil" cx="70" cy="36" r="1.5" fill="#000" /><circle class="pupil" cx="82" cy="36" r="1.5" fill="#000" /></g>
+                    <polygon points="73,42 77,42 75,44" fill="#e65100"/>
+                </g>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<div id="monkeyAgent">
+    <div class="agent-speech" id="monkeySpeech">Hi, I am your News Finder</div>
+    <div id="monkeyFlipper">
+        <button id="monkeyAvatar">
+            <svg viewBox="0 0 100 100">
+                <path id="m-tail" d="M 20 70 Q 0 90 10 40" fill="none" stroke="#5D4037" stroke-width="6" stroke-linecap="round"/>
+                <line id="m-leg-l" x1="40" y1="70" x2="40" y2="90" stroke="#4E342E" stroke-width="6" stroke-linecap="round" />
+                <line id="m-arm-l" x1="40" y1="45" x2="30" y2="65" stroke="#4E342E" stroke-width="6" stroke-linecap="round" />
+                <rect id="m-body" x="30" y="40" width="35" height="35" rx="15" fill="#5D4037" />
+                <circle cx="47" cy="58" r="12" fill="#D7CCC8" /> 
+                <line id="m-leg-r" x1="60" y1="70" x2="60" y2="90" stroke="#5D4037" stroke-width="6" stroke-linecap="round" />
+                <line id="m-arm-r" x1="65" y1="45" x2="75" y2="65" stroke="#5D4037" stroke-width="6" stroke-linecap="round" />
+                <g id="m-head">
+                    <circle cx="35" cy="25" r="7" fill="#5D4037" /> 
+                    <circle cx="65" cy="25" r="7" fill="#5D4037" />
+                    <circle cx="50" cy="25" r="18" fill="#5D4037" /> 
+                    <path d="M 38 25 Q 50 15 62 25 Q 65 35 50 38 Q 35 35 38 25" fill="#D7CCC8"/>
+                    <circle cx="43" cy="23" r="2.5" fill="#000" /> 
+                    <circle cx="57" cy="23" r="2.5" fill="#000" />
+                    <ellipse cx="50" cy="32" rx="8" ry="5" fill="#BCAAA4" />
+                    <path d="M 46 32 Q 50 35 54 32" fill="none" stroke="#3E2723" stroke-width="1.5" stroke-linecap="round"/>
+                </g>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<div id="newsOverlay" class="modal-overlay">
+    <div class="news-modal">
+        <div class="news-header">
+            <h2>📰 Latest Biology News</h2>
+            <button class="news-close-btn" id="closeNewsBtn">Close</button>
+        </div>
+        <div class="news-feed" id="newsFeedContent"><div style="text-align:center; padding:20px; color:#666;">Fetching latest discoveries...</div></div>
+    </div>
+</div>
+
+<div id="chatBox">
+    <div id="chatHeader">🐱 AI Cat Assistant</div>
+    <div id="messages"><div class="message bot">Meow! 👋 Tell me a topic or idea, and I'll find you the perfect research paper!</div></div>
+    <div id="inputArea">
+        <input id="userInput" type="text" placeholder="e.g. cellular energy generation...">
+        <button id="sendBtn">Send</button>
+    </div>
+</div>
+
+<script>
+    /* =========================
+       WELCOME POPUP LOGIC
+    ========================= */
+    const welcomeOverlay = document.getElementById('welcomeOverlay');
+    
+    // Will ALWAYS show on load so you can easily see it
+    welcomeOverlay.style.display = 'flex';
+    
+    document.getElementById('closeWelcomeBtn').addEventListener('click', () => {
+        welcomeOverlay.style.display = 'none';
+    });
+
+    /* =========================
+       HELPER FUNCTIONS
+    ========================= */
+    function stripHtml(str) { return str ? str.replace(/<[^>]*>?/gm, '') : ''; }
+    function escapeHtml(str) { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : ''; }
+
+    /* =========================
+       SIDEBAR: BOOKMARKS & HISTORY
+    ========================= */
+    let bookmarks = JSON.parse(localStorage.getItem('biopapers_bookmarks')) || [];
+    let readingHistory = JSON.parse(localStorage.getItem('lifepapers_history')) || [];
+    
+    const sidePanel = document.getElementById('sidePanel');
+    const tabBookmarks = document.getElementById('tabBookmarks');
+    const tabHistory = document.getElementById('tabHistory');
+    const viewBookmarks = document.getElementById('viewBookmarks');
+    const viewHistory = document.getElementById('viewHistory');
+    const bookmarksList = document.getElementById('bookmarksList');
+    const historyList = document.getElementById('historyList');
+
+    document.getElementById('openSidePanelBtn').addEventListener('click', () => {
+        sidePanel.classList.add('open');
+        renderBookmarks();
+        renderHistory();
+    });
+    document.getElementById('closeSidePanelBtn').addEventListener('click', () => { sidePanel.classList.remove('open'); });
+
+    tabBookmarks.addEventListener('click', () => {
+        tabBookmarks.classList.add('active'); tabHistory.classList.remove('active');
+        viewBookmarks.classList.add('active'); viewHistory.classList.remove('active');
+    });
+    tabHistory.addEventListener('click', () => {
+        tabHistory.classList.add('active'); tabBookmarks.classList.remove('active');
+        viewHistory.classList.add('active'); viewBookmarks.classList.remove('active');
+    });
+
+    // Bookmarks Logic
+    window.toggleBookmark = function(id, title, url, topic, btnElement) {
+        const index = bookmarks.findIndex(b => b.id === id);
+        if (index > -1) {
+            bookmarks.splice(index, 1);
+            btnElement.classList.remove('saved'); btnElement.innerHTML = '☆';
+        } else {
+            bookmarks.push({ id, title, url, topic: topic || 'General Biology' });
+            btnElement.classList.add('saved'); btnElement.innerHTML = '★';
+        }
+        localStorage.setItem('biopapers_bookmarks', JSON.stringify(bookmarks));
+        renderBookmarks(); 
+    }
+    window.removeBookmark = function(id) {
+        bookmarks = bookmarks.filter(b => b.id !== id);
+        localStorage.setItem('biopapers_bookmarks', JSON.stringify(bookmarks));
+        renderBookmarks();
+        const btn = document.getElementById(`bm-btn-${id}`);
+        if(btn) { btn.classList.remove('saved'); btn.innerHTML = '☆'; }
+    }
+    function renderBookmarks(filterText = '') {
+        bookmarksList.innerHTML = '';
+        if (bookmarks.length === 0) { bookmarksList.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">No bookmarks yet.</div>'; return; }
+        const grouped = {};
+        bookmarks.forEach(bm => {
+            if (filterText && !bm.title.toLowerCase().includes(filterText.toLowerCase()) && !bm.topic.toLowerCase().includes(filterText.toLowerCase())) return;
+            if (!grouped[bm.topic]) grouped[bm.topic] = [];
+            grouped[bm.topic].push(bm);
+        });
+        for (const topic in grouped) {
+            const categoryDiv = document.createElement('div'); categoryDiv.className = 'bm-category';
+            categoryDiv.innerHTML = `<h3>${escapeHtml(topic)}</h3>`;
+            grouped[topic].forEach(bm => {
+                categoryDiv.innerHTML += `<div class="sp-item"><div style="flex:1; padding-right:10px;"><a href="${bm.url}" target="_blank">${escapeHtml(bm.title)}</a></div><button onclick="removeBookmark('${bm.id}')">&times;</button></div>`;
+            });
+            bookmarksList.appendChild(categoryDiv);
+        }
+    }
+    document.getElementById('bmSearchInput').addEventListener('input', (e) => { renderBookmarks(e.target.value); });
+
+    // History Logic
+    window.recordHistory = function(title, url) {
+        readingHistory = readingHistory.filter(h => h.url !== url);
+        readingHistory.unshift({ title, url, date: new Date().toLocaleString() });
+        if (readingHistory.length > 50) readingHistory.pop(); // Keep last 50
+        localStorage.setItem('lifepapers_history', JSON.stringify(readingHistory));
+        renderHistory();
+    };
+
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if (readingHistory.length === 0) {
+            historyList.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">No history yet.</div>';
+            return;
+        }
+        readingHistory.forEach((item, index) => {
+            historyList.innerHTML += `
+                <div class="sp-item">
+                    <div style="flex:1;">
+                        <a href="${item.url}" target="_blank">${escapeHtml(item.title)}</a>
+                        <span class="history-date">Opened: ${item.date}</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+        if(confirm('Are you sure you want to clear your reading history?')) {
+            readingHistory = [];
+            localStorage.setItem('lifepapers_history', JSON.stringify(readingHistory));
+            renderHistory();
+        }
+    });
+
+    /* =========================
+       SMART TOPIC & YEAR DROPDOWNS
+    ========================= */
+    const allTopicsList = [
+        "Animal Physiology", "Biochemistry", "Bioenergetics", "Bioinformatics", "Biomechanics", "Biophysics", "Biostatistics", "Biotechnology", "Cancer", "Cell Biology", "Cytogenetics and Genomics", "Disease Biology", "Ecology", "Endocrinology", "Entomology", "Evolution Biology", "Fish biology and Aquaculture", "Genetics", "Human Physiology", "Immunology", "Microbiology", "Molecular Biology", "Molecular Cell Biology", "Parasitology", "Synthetic Biology", "Systems Biology", "Toxicology", "Wildlife", "Zoology"
+    ].sort();
+    const topicBody = document.getElementById('topicBody');
+    const activeTopicValue = document.getElementById('activeTopicValue');
+    const topicSelectedText = document.getElementById('topicSelectedText');
+
+    function renderDropdownTopics(filterText = '') {
+        let html = `<li data-value="ALL" style="font-weight:bold; border-bottom:1px solid #eee; margin-bottom:5px;">All Topics</li>`;
+        allTopicsList.forEach(topic => {
+            if (topic.toLowerCase().includes(filterText.toLowerCase())) html += `<li data-value="${topic}">${topic}</li>`;
+        });
+        document.getElementById('topicList').innerHTML = html;
+        document.getElementById('topicList').querySelectorAll('li').forEach(li => {
+            li.addEventListener('click', (e) => {
+                activeTopicValue.value = e.target.getAttribute('data-value');
+                topicSelectedText.innerText = e.target.innerText;
+                topicBody.classList.remove('show');
+                executeNewSearch(); 
+            });
+        });
+    }
+    document.getElementById('topicHeader').addEventListener('click', (e) => { e.stopPropagation(); topicBody.classList.toggle('show'); renderDropdownTopics(); });
+    document.getElementById('topicSearchInput').addEventListener('input', (e) => { renderDropdownTopics(e.target.value); });
+    document.addEventListener('click', (e) => { if (!document.getElementById('topicDropdownContainer').contains(e.target)) topicBody.classList.remove('show'); });
+    renderDropdownTopics(); 
+
+    const yearFilter = document.getElementById('yearFilter');
+    const customYearInput = document.getElementById('customYearInput');
+    yearFilter.addEventListener('change', () => {
+        if (yearFilter.value === 'CUSTOM') { customYearInput.style.display = 'block'; customYearInput.focus(); } 
+        else { customYearInput.style.display = 'none'; executeNewSearch(); }
+    });
+    customYearInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeNewSearch(); });
+
+    /* =========================
+       OPENALEX SEARCH & PAGINATION LOGIC
+    ========================= */
+    const searchInput = document.getElementById('searchInput');
+    const sortFilter = document.getElementById('sortFilter');
+    const paperList = document.getElementById('paperList');
+    const resultsCount = document.getElementById('resultsCount');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+    let currentPage = 1;
+    let currentApiUrl = "";
+    let isFetching = false;
+    let currentTopicState = 'General Biology';
+
+    function executeNewSearch() {
+        currentPage = 1;
+        paperList.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);">Retrieving papers across the web...</div>';
+        loadMoreContainer.style.display = 'none';
+        fetchPapersData();
+    }
+
+    async function fetchPapersData(isLoadMore = false) {
+        if (isFetching) return;
+        isFetching = true;
+        
+        if (isLoadMore) {
+            loadMoreBtn.innerText = "Loading...";
+            currentPage++;
+        } else {
+            let filterParts = ['is_oa:true']; 
+            let searchStrings = [];
+            let activeTopic = activeTopicValue.value; 
+            currentTopicState = activeTopic === 'ALL' ? 'General Biology' : activeTopic;
+            let sortBy = sortFilter.value;
+            let userQuery = searchInput.value.trim();
+            let selectedYear = yearFilter.value === 'CUSTOM' ? customYearInput.value : yearFilter.value;
+
+            let hasSpecificSearch = false;
+            if (activeTopic !== 'ALL') { searchStrings.push(`"${activeTopic}"`); hasSpecificSearch = true; }
+            if (userQuery) { searchStrings.push(`(${userQuery})`); hasSpecificSearch = true; }
+            
+            // If totally blank, fall back to "biology" to avoid empty query issues
+            if (!hasSpecificSearch) { searchStrings.push('biology'); }
+
+            if (selectedYear && selectedYear !== 'ALL') {
+                if (selectedYear.includes('-')) {
+                    const [start, end] = selectedYear.split('-');
+                    filterParts.push(`publication_year:>${parseInt(start) - 1}`);
+                    filterParts.push(`publication_year:<${parseInt(end) + 1}`);
+                } else {
+                    filterParts.push(`publication_year:${selectedYear}`);
+                }
+            } else {
+                filterParts.push(`publication_year:<2027`); 
+            }
+
+            const encodedSearch = encodeURIComponent(searchStrings.join(' ')); 
+            const encodedFilters = encodeURIComponent(filterParts.join(','));
+            currentApiUrl = `https://api.openalex.org/works?search=${encodedSearch}&filter=${encodedFilters}&sort=${encodeURIComponent(sortBy)}&per_page=30`;
+        }
+
+        try {
+            const response = await fetch(`${currentApiUrl}&page=${currentPage}`);
+            const data = await response.json();
+            const papers = data.results || [];
+            
+            renderPapers(papers, data.meta?.count || 0, isLoadMore);
+            
+            if (papers.length > 0 && (currentPage * 30) < data.meta.count) {
+                loadMoreContainer.style.display = 'block';
+                loadMoreBtn.innerText = "Load More Papers ↓";
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+        } catch (error) {
+            if (!isLoadMore) paperList.innerHTML = '<div style="text-align:center; padding:40px; color:red;">Failed to load papers. Please check your internet connection.</div>';
+            loadMoreBtn.innerText = "Error. Try Again.";
+        }
+        isFetching = false;
+    }
+
+    function renderPapers(papers, totalHits, isAppend) {
+        if (!isAppend) paperList.innerHTML = '';
+        
+        if (!papers.length && !isAppend) {
+            paperList.innerHTML = '<div style="text-align:center; padding:40px; color: var(--text-muted);">No research papers found matching your search.</div>';
+            resultsCount.textContent = '0 results';
+            return;
+        }
+
+        resultsCount.textContent = `Found ${totalHits.toLocaleString()} papers`;
+
+        const htmlString = papers.map(paper => {
+            const cleanTitle = stripHtml(paper.title || 'Untitled'); 
+            const authors = paper.authorships ? paper.authorships.map(a => a.author.display_name).join(', ') : 'Unknown Authors';
+            const year = paper.publication_year || 'N/A';
+            const journal = paper.primary_location?.source?.display_name || 'Open Access Repository';
+            const citations = paper.cited_by_count || 0;
+            
+            let abstract = 'No abstract preview available.';
+            if (paper.abstract_inverted_index) {
+                const words = [];
+                for (const [word, positions] of Object.entries(paper.abstract_inverted_index)) {
+                    positions.forEach(pos => { words[pos] = word; });
+                }
+                abstract = words.filter(w => w).join(' ');
+                if (abstract.length > 350) abstract = abstract.substring(0, 350) + '...';
+            }
+
+            const fullTextUrl = paper.primary_location?.landing_page_url || paper.best_oa_location?.landing_page_url || paper.doi || paper.id;
+            const pdfUrl = paper.primary_location?.pdf_url || paper.best_oa_location?.pdf_url;
+            const hasPdf = !!pdfUrl;
+            const pdfIcon = hasPdf ? `<span class="pdf-icon" title="PDF available">📄</span>` : '';
+            const readUrl = hasPdf ? pdfUrl : fullTextUrl;
+
+            let dotColor = citations > 50 ? '#4CAF50' : (citations > 5 ? '#2196F3' : '#F44336');
+            let dotTitle = citations > 50 ? 'High Quality' : (citations > 5 ? 'Average Quality' : 'Low Citations/New');
+
+            const paperId = paper.id.split('/').pop(); 
+            const isBookmarked = bookmarks.some(b => b.id === paperId);
+            const starClass = isBookmarked ? 'saved' : '';
+            const starChar = isBookmarked ? '★' : '☆';
+
+            const safeTitle = escapeHtml(cleanTitle).replace(/'/g, "\\'");
+            const safeUrl = fullTextUrl.replace(/'/g, "\\'");
+
+            return `
+                <article class="paper-card">
+                    <button class="bookmark-btn ${starClass}" id="bm-btn-${paperId}" 
+                        onclick="toggleBookmark('${paperId}', '${safeTitle}', '${safeUrl}', '${currentTopicState}', this)">
+                        ${starChar}
+                    </button>
+                    <span class="quality-dot" style="color:${dotColor};" title="${dotTitle}">●</span>
+                    <div class="paper-meta">
+                        <span class="badge">Open Access</span>
+                        <span>${year}</span> • <span>${escapeHtml(journal)}</span> • <span>${citations} Citations</span>
+                    </div>
+                    <h2 class="paper-title">${escapeHtml(cleanTitle)} ${pdfIcon}</h2>
+                    <div class="paper-authors">${escapeHtml(authors)}</div>
+                    <p class="paper-abstract">${escapeHtml(abstract)}</p>
+                    <div class="paper-actions">
+                        <a class="btn-view" href="${readUrl}" target="_blank" onclick="recordHistory('${safeTitle}', '${safeUrl}')">Read Paper ↗</a>
+                        <a class="action-link" href="${fullTextUrl}" target="_blank" onclick="recordHistory('${safeTitle}', '${safeUrl}')">Direct Link ↗</a>
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+        if (isAppend) {
+            paperList.insertAdjacentHTML('beforeend', htmlString);
+        } else {
+            paperList.innerHTML = htmlString;
+        }
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', executeNewSearch);
+    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeNewSearch(); });
+    sortFilter.addEventListener('change', executeNewSearch);
+    loadMoreBtn.addEventListener('click', () => fetchPapersData(true));
+    
+    executeNewSearch(); // Init
+
+    /* =========================
+       TAKE YOUR NOTES TOOL LOGIC
+    ========================= */
+    const notesModal = document.getElementById('notesModal');
+    const noteTextarea = document.getElementById('noteTextarea');
+    const wordCounter = document.getElementById('wordCounter');
+    const notesPageIndicator = document.getElementById('notesPageIndicator');
+    const downloadPanel = document.getElementById('downloadPanel');
+    
+    let notesPages = JSON.parse(localStorage.getItem('lifepapers_notes')) || [''];
+    let activePageIndex = 0;
+
+    document.getElementById('openNotesBtn').addEventListener('click', () => {
+        notesModal.style.display = 'flex';
+        loadNotePage(activePageIndex);
+    });
+    document.getElementById('closeNotesBtn').addEventListener('click', () => { notesModal.style.display = 'none'; downloadPanel.style.display = 'none';});
+
+    function saveNotes() {
+        notesPages[activePageIndex] = noteTextarea.value;
+        localStorage.setItem('lifepapers_notes', JSON.stringify(notesPages));
+        updateWordCount();
+    }
+
+    function loadNotePage(index) {
+        if (index < 0 || index >= notesPages.length) return;
+        activePageIndex = index;
+        noteTextarea.value = notesPages[activePageIndex];
+        notesPageIndicator.innerText = `Page ${activePageIndex + 1} of ${notesPages.length}`;
+        updateWordCount();
+    }
+
+    function updateWordCount() {
+        const text = noteTextarea.value.trim();
+        const words = text ? text.split(/\s+/).length : 0;
+        wordCounter.innerText = `${words} / 200 words`;
+        if (words > 200) {
+            wordCounter.classList.add('limit');
+            const truncated = text.split(/\s+/).slice(0, 200).join(' ');
+            if (noteTextarea.value !== truncated) {
+                noteTextarea.value = truncated;
+                wordCounter.innerText = `200 / 200 words`;
+            }
+        } else {
+            wordCounter.classList.remove('limit');
+        }
+    }
+
+    noteTextarea.addEventListener('input', () => { saveNotes(); });
+
+    document.getElementById('btnNotesPrev').addEventListener('click', () => loadNotePage(activePageIndex - 1));
+    document.getElementById('btnNotesNext').addEventListener('click', () => {
+        if (activePageIndex < notesPages.length - 1) loadNotePage(activePageIndex + 1);
+    });
+    document.getElementById('btnNotesNew').addEventListener('click', () => {
+        notesPages.push('');
+        loadNotePage(notesPages.length - 1);
+    });
+
+    document.getElementById('btnNotesClearPage').addEventListener('click', () => {
+        if (confirm("Clear this page?")) {
+            notesPages[activePageIndex] = '';
+            loadNotePage(activePageIndex);
+        }
+    });
+    document.getElementById('btnNotesClearAll').addEventListener('click', () => {
+        if (confirm("Clear ALL pages? This cannot be undone.")) {
+            notesPages = [''];
+            loadNotePage(0);
+        }
+    });
+
+    // Export Logic
+    const dlRange = document.getElementById('dlRange');
+    const dlCustomInputs = document.getElementById('dlCustomInputs');
+    document.getElementById('btnNotesDownloadMenu').addEventListener('click', () => {
+        downloadPanel.style.display = downloadPanel.style.display === 'flex' ? 'none' : 'flex';
+    });
+    dlRange.addEventListener('change', () => {
+        dlCustomInputs.style.display = dlRange.value === 'custom' ? 'flex' : 'none';
+    });
+
+    document.getElementById('btnNotesExport').addEventListener('click', async () => {
+        const format = document.getElementById('dlFormat').value;
+        const range = dlRange.value;
+        let start = 0; let end = 0;
+
+        if (range === 'current') { start = activePageIndex; end = activePageIndex; }
+        else if (range === 'all') { start = 0; end = notesPages.length - 1; }
+        else {
+            start = parseInt(document.getElementById('dlFrom').value) - 1;
+            end = parseInt(document.getElementById('dlTo').value) - 1;
+            if (start < 0) start = 0; if (end >= notesPages.length) end = notesPages.length - 1;
+            if (start > end) { alert("Invalid range"); return; }
+        }
+
+        const exportCanvas = document.getElementById('exportCanvas');
+        exportCanvas.innerHTML = ''; 
+
+        for (let i = start; i <= end; i++) {
+            const pageDiv = document.createElement('div');
+            pageDiv.style.marginBottom = "40px";
+            pageDiv.style.borderBottom = "1px solid #ccc";
+            pageDiv.style.paddingBottom = "20px";
+            pageDiv.innerHTML = `<h3 style="color:#00796b; margin-bottom:10px;">Page ${i+1}</h3><p style="white-space: pre-wrap;">${escapeHtml(notesPages[i]) || '<i>Blank page</i>'}</p>`;
+            exportCanvas.appendChild(pageDiv);
+        }
+
+        document.getElementById('btnNotesExport').innerText = "Generating...";
+
+        try {
+            const canvas = await html2canvas(exportCanvas, { scale: 2 });
+            const imgData = canvas.toDataURL(`image/${format === 'jpg' ? 'jpeg' : format}`);
+
+            if (format === 'pdf') {
+                const pdf = new jspdf.jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save("LifePapers_Notes.pdf");
+            } else {
+                const link = document.createElement('a');
+                link.download = `LifePapers_Notes.${format}`;
+                link.href = imgData;
+                link.click();
+            }
+        } catch (err) {
+            alert("Error generating file. Please ensure you have internet connection for the export libraries.");
+        }
+
+        document.getElementById('btnNotesExport').innerText = "Confirm & Save";
+        downloadPanel.style.display = 'none';
+        exportCanvas.innerHTML = '';
+    });
+
+
+    /* =========================
+       AGENT ENGINE: CAT & MONKEY
+    ========================= */
+    class Agent {
+        constructor(id, avatarId, flipperId, speechId, zoneMinRatio, zoneMaxRatio, defaultSpeech) {
+            this.el = document.getElementById(id);
+            this.avatar = document.getElementById(avatarId);
+            this.flipper = document.getElementById(flipperId);
+            this.speech = document.getElementById(speechId);
+            this.zoneMinRatio = zoneMinRatio;
+            this.zoneMaxRatio = zoneMaxRatio;
+            this.isInteracting = false;
+            this.timeout = null;
+            this.defaultSpeech = defaultSpeech;
+            
+            this.currentX = this.getValidX();
+            this.el.style.transform = `translateX(${this.currentX}px)`;
+            
+            setTimeout(() => this.triggerRandomState(), 1000 + Math.random()*1000);
+            
+            setInterval(() => {
+                if (!this.isInteracting && Math.random() > 0.5) {
+                    this.speech.textContent = this.defaultSpeech;
+                    this.speech.classList.add("show");
+                    setTimeout(() => this.speech.classList.remove("show"), 3000);
+                }
+            }, 8000 + Math.random()*4000);
+        }
+
+        getValidX() {
+            const minX = window.innerWidth * this.zoneMinRatio;
+            const maxX = window.innerWidth * this.zoneMaxRatio;
+            const safeMin = Math.max(10, minX);
+            const safeMax = Math.min(window.innerWidth - 160, maxX);
+            return safeMin + Math.random() * (safeMax - safeMin);
+        }
+
+        walk(animClass) {
+            this.avatar.className = animClass;
+            const targetX = this.getValidX();
+            const distance = Math.abs(targetX - this.currentX);
+            const duration = distance / 90; 
+            
+            this.flipper.style.transform = targetX > this.currentX ? 'scaleX(1)' : 'scaleX(-1)';
+            this.el.style.transition = `transform ${duration}s linear`;
+            this.el.style.transform = `translateX(${targetX}px)`;
+            this.currentX = targetX;
+            this.timeout = setTimeout(() => this.triggerRandomState(), duration * 1000 + 500);
+        }
+    }
+
+    const cat = new Agent('catAgent', 'catAvatar', 'catFlipper', 'catSpeech', 0.0, 0.45, "Hi, I am your AI helper Cat");
+    cat.triggerRandomState = function() {
+        if (this.isInteracting) return;
+        this.avatar.className = '';
+        const rand = Math.random();
+        if (rand < 0.5) this.walk('c-walking');
+        else if (rand < 0.8) { this.avatar.className = 'c-sitting'; this.timeout = setTimeout(() => this.triggerRandomState(), 3000); }
+        else { this.avatar.className = ''; this.timeout = setTimeout(() => this.triggerRandomState(), 2000); }
+    };
+
+    const monkey = new Agent('monkeyAgent', 'monkeyAvatar', 'monkeyFlipper', 'monkeySpeech', 0.55, 1.0, "Hi, I am your News Finder");
+    monkey.triggerRandomState = function() {
+        if (this.isInteracting) return;
+        this.avatar.className = '';
+        const rand = Math.random();
+        if (rand < 0.6) this.walk('m-walking');
+        else { this.avatar.className = 'm-standing'; this.timeout = setTimeout(() => this.triggerRandomState(), 3000); }
+    };
+
+    // Chat Box (Cat)
+    const chatBox = document.getElementById("chatBox");
+    cat.avatar.addEventListener('click', (e) => {
+        e.preventDefault(); 
+        if (cat.isInteracting) {
+            cat.isInteracting = false; chatBox.classList.remove("open"); cat.triggerRandomState();
+        } else {
+            cat.isInteracting = true; clearTimeout(cat.timeout);
+            cat.currentX = cat.el.getBoundingClientRect().left;
+            cat.el.style.transition = 'none'; cat.el.style.transform = `translateX(${cat.currentX}px)`;
+            cat.avatar.className = 'c-sitting'; cat.speech.classList.remove("show");
+            chatBox.classList.add("open");
+        }
+    });
+
+    const chatInput = document.getElementById("userInput");
+    const chatMessages = document.getElementById("messages");
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+        const text = chatInput.value.trim();
+        if (!text) return;
+        chatMessages.innerHTML += `<div class="message user">${escapeHtml(text)}</div>`;
+        chatInput.value = ""; chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const loadingId = 'load-' + Date.now();
+        chatMessages.innerHTML += `<div class="message bot" id="${loadingId}"><em>Meow! 🔄 Searching database...</em></div>`;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const query = encodeURIComponent(`"${text}"`);
+        const url = `https://api.openalex.org/works?search=${query}&filter=is_oa:true,publication_year:<2027&sort=cited_by_count:desc&per_page=1`;
+        
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            document.getElementById(loadingId).remove();
+            
+            if (data.results && data.results.length > 0) {
+                const best = data.results[0];
+                const link = best.primary_location?.landing_page_url || best.doi || best.id;
+                const safeTitle = escapeHtml(stripHtml(best.title)).replace(/'/g, "\\'");
+                chatMessages.innerHTML += `<div class="message bot">Found it! 🐱<br><br><strong>${escapeHtml(stripHtml(best.title))}</strong><br><a class="btn-view" style="margin-top: 10px; width: 100%; display:inline-block;" href="${link}" target="_blank" onclick="recordHistory('${safeTitle}', '${link}')">Read Now ↗</a></div>`;
+            } else {
+                chatMessages.innerHTML += `<div class="message bot">Hmm 😿, couldn't find a perfect match. Try simpler keywords!</div>`;
+            }
+        } catch(e) {
+            document.getElementById(loadingId).remove();
+            chatMessages.innerHTML += `<div class="message bot">Network error. 😿</div>`;
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+
+    // News Modal (Monkey)
+    const newsOverlay = document.getElementById("newsOverlay");
+    monkey.avatar.addEventListener('click', async (e) => {
+        e.preventDefault();
+        monkey.isInteracting = true; clearTimeout(monkey.timeout);
+        monkey.currentX = monkey.el.getBoundingClientRect().left;
+        monkey.el.style.transition = 'none'; monkey.el.style.transform = `translateX(${monkey.currentX}px)`;
+        monkey.avatar.className = 'm-standing'; monkey.speech.classList.remove("show");
+        newsOverlay.style.display = "flex";
+        
+        try {
+            const url = `https://api.openalex.org/works?search=biology&filter=is_oa:true,publication_year:<2027&sort=publication_date:desc&per_page=5`;
+            const res = await fetch(url);
+            const data = await res.json();
+            let html = "";
+            (data.results || []).forEach(item => {
+                const link = item.primary_location?.landing_page_url || item.doi || item.id;
+                const safeTitle = escapeHtml(stripHtml(item.title));
+                html += `<div class="news-item"><h3>${safeTitle}</h3><p>${item.primary_location?.source?.display_name || 'Open Access'} • ${item.publication_date}</p><a href="${link}" target="_blank" onclick="recordHistory('${safeTitle.replace(/'/g, "\\'")}', '${link}')">Read Release →</a></div>`;
+            });
+            document.getElementById("newsFeedContent").innerHTML = html || "<p>No recent news found.</p>";
+        } catch (error) { document.getElementById("newsFeedContent").innerHTML = "<p style='color:red;'>Failed to load news.</p>"; }
+    });
+
+    document.getElementById("closeNewsBtn").addEventListener('click', () => {
+        newsOverlay.style.display = "none";
+        document.getElementById("newsFeedContent").innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Fetching latest discoveries...</div>";
+        monkey.isInteracting = false; monkey.triggerRandomState();
+    });
+
+</script>
+</body>
+</html>
